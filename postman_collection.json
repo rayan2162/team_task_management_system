@@ -1,0 +1,842 @@
+{
+  "info": {
+    "name": "TaskFlow — Team Task Management API",
+    "description": "Complete Postman collection for the TaskFlow API.\n\nAuthentication: After login/register, copy the `token` from the response and set the `auth_token` environment variable.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Returns server health status. No authentication required."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('auth_token', json.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@email.com\",\n  \"password\": \"secret123\",\n  \"password_confirmation\": \"secret123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "auth", "register"]
+            },
+            "description": "Register a new user. Returns user and bearer token. Auto-sets auth_token env variable."
+          },
+          "response": [
+            {
+              "name": "201 — Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Registration successful.\",\n  \"data\": {\n    \"user\": {\n      \"id\": 1,\n      \"name\": \"John Doe\",\n      \"email\": \"john@email.com\",\n      \"avatar\": null,\n      \"created_at\": \"2026-04-21T10:00:00.000000Z\"\n    },\n    \"token\": \"1|abc123def456\"\n  }\n}"
+            },
+            {
+              "name": "422 — Validation Error",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Validation failed.\",\n  \"errors\": {\n    \"email\": [\"The email has already been taken.\"],\n    \"password\": [\"The password field must be at least 8 characters.\"]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('auth_token', json.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rayan@example.com\",\n  \"password\": \"password\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "auth", "login"]
+            },
+            "description": "Log in with email and password. Returns user and bearer token. Auto-sets auth_token env variable."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Login successful.\",\n  \"data\": {\n    \"user\": {\n      \"id\": 1,\n      \"name\": \"Rayan\",\n      \"email\": \"rayan@example.com\",\n      \"avatar\": null,\n      \"created_at\": \"2026-04-21T10:00:00.000000Z\"\n    },\n    \"token\": \"2|xyz789ghi012\"\n  }\n}"
+            },
+            {
+              "name": "401 — Invalid Credentials",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid credentials.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "auth", "logout"]
+            },
+            "description": "Log out and revoke the current Sanctum token."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Logged out successfully.\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Current User (Me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "auth", "me"]
+            },
+            "description": "Returns the currently authenticated user."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Current user retrieved.\",\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"Rayan\",\n    \"email\": \"rayan@example.com\",\n    \"avatar\": null,\n    \"created_at\": \"2026-04-21T10:00:00.000000Z\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "List My Projects",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/projects",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "projects"]
+            },
+            "description": "Returns all projects the authenticated user is a member of."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Projects retrieved.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"code\": \"PRJX29K41\",\n      \"name\": \"Cashflow App (Issues)\",\n      \"status\": \"active\",\n      \"created_by\": 1,\n      \"creator\": {\n        \"id\": 1,\n        \"name\": \"Rayan\",\n        \"email\": \"rayan@example.com\",\n        \"avatar\": null,\n        \"created_at\": \"2026-04-21T10:00:00.000000Z\"\n      },\n      \"created_at\": \"2026-04-21T10:00:00.000000Z\",\n      \"updated_at\": \"2026-04-21T10:00:00.000000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Project",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('project_id', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Website Redesign\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/projects",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "projects"]
+            },
+            "description": "Creates a new project. Backend auto-generates code and adds creator as first member. Auto-sets project_id env variable."
+          },
+          "response": [
+            {
+              "name": "201 — Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Project created successfully.\",\n  \"data\": {\n    \"id\": 2,\n    \"code\": \"PRJAB12CD\",\n    \"name\": \"Website Redesign\",\n    \"status\": \"active\",\n    \"created_by\": 1,\n    \"created_at\": \"2026-04-21T10:05:00.000000Z\",\n    \"updated_at\": \"2026-04-21T10:05:00.000000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Single Project",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/projects/{{project_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "projects", "{{project_id}}"]
+            },
+            "description": "Returns project details with members, tasks, and subtasks. Requires project membership."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Project retrieved.\",\n  \"data\": {\n    \"id\": 1,\n    \"code\": \"PRJX29K41\",\n    \"name\": \"Cashflow App (Issues)\",\n    \"status\": \"active\",\n    \"created_by\": 1,\n    \"creator\": {\n      \"id\": 1,\n      \"name\": \"Rayan\",\n      \"email\": \"rayan@example.com\",\n      \"avatar\": null,\n      \"created_at\": \"2026-04-21T10:00:00.000000Z\"\n    },\n    \"members\": [],\n    \"tasks\": [],\n    \"created_at\": \"2026-04-21T10:00:00.000000Z\",\n    \"updated_at\": \"2026-04-21T10:00:00.000000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Join Project by Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"PRJX29K41\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/projects/join",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "projects", "join"]
+            },
+            "description": "Join a project using its unique project code."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Joined project successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"code\": \"PRJX29K41\",\n    \"name\": \"Cashflow App (Issues)\",\n    \"status\": \"active\",\n    \"created_by\": 1,\n    \"created_at\": \"2026-04-21T10:00:00.000000Z\",\n    \"updated_at\": \"2026-04-21T10:00:00.000000Z\"\n  }\n}"
+            },
+            {
+              "name": "400 — Already a Member",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"You are already a member of this project.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Archive Project",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/projects/{{project_id}}/archive",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "projects", "{{project_id}}", "archive"]
+            },
+            "description": "Archives a project. Only the project creator can archive."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Project archived.\",\n  \"data\": {\n    \"id\": 1,\n    \"code\": \"PRJX29K41\",\n    \"name\": \"Cashflow App (Issues)\",\n    \"status\": \"archived\",\n    \"created_by\": 1,\n    \"created_at\": \"2026-04-21T10:00:00.000000Z\",\n    \"updated_at\": \"2026-04-21T12:00:00.000000Z\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "List Tasks for Project",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/projects/{{project_id}}/tasks?status=&assigned_to=",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "projects", "{{project_id}}", "tasks"],
+              "query": [
+                { "key": "status", "value": "", "description": "Filter: pending, working, or done", "disabled": true },
+                { "key": "assigned_to", "value": "", "description": "Filter: user ID", "disabled": true }
+              ]
+            },
+            "description": "Returns all tasks for a project. Supports optional status and assigned_to query filters."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Tasks retrieved.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"project_id\": 1,\n      \"title\": \"Build API\",\n      \"status\": \"pending\",\n      \"deadline\": \"2026-04-30\",\n      \"created_by\": 1,\n      \"assigned_to\": 2,\n      \"created_at\": \"2026-04-21T10:00:00.000000Z\",\n      \"updated_at\": \"2026-04-21T10:00:00.000000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('task_id', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Build API\",\n  \"status\": \"pending\",\n  \"deadline\": \"2026-04-30\",\n  \"assigned_to\": 2\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/projects/{{project_id}}/tasks",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "projects", "{{project_id}}", "tasks"]
+            },
+            "description": "Creates a new task in a project. Requires project membership. Auto-sets task_id env variable."
+          },
+          "response": [
+            {
+              "name": "201 — Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Task created successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"project_id\": 1,\n    \"title\": \"Build API\",\n    \"status\": \"pending\",\n    \"deadline\": \"2026-04-30\",\n    \"created_by\": 1,\n    \"assigned_to\": 2,\n    \"creator\": {\n      \"id\": 1,\n      \"name\": \"Rayan\",\n      \"email\": \"rayan@example.com\",\n      \"avatar\": null,\n      \"created_at\": \"2026-04-21T10:00:00.000000Z\"\n    },\n    \"assignee\": {\n      \"id\": 2,\n      \"name\": \"Team Member\",\n      \"email\": \"member@example.com\",\n      \"avatar\": null,\n      \"created_at\": \"2026-04-21T10:00:00.000000Z\"\n    },\n    \"created_at\": \"2026-04-21T10:05:00.000000Z\",\n    \"updated_at\": \"2026-04-21T10:05:00.000000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Single Task",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/tasks/{{task_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "tasks", "{{task_id}}"]
+            },
+            "description": "Returns a task with its subtasks. Requires project membership."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Task retrieved.\",\n  \"data\": {\n    \"id\": 1,\n    \"project_id\": 1,\n    \"title\": \"Build API\",\n    \"status\": \"pending\",\n    \"deadline\": \"2026-04-30\",\n    \"created_by\": 1,\n    \"assigned_to\": 2,\n    \"subtasks\": [\n      {\n        \"id\": 1,\n        \"task_id\": 1,\n        \"body\": \"Implement auth middleware\",\n        \"status\": \"pending\",\n        \"deadline\": \"2026-04-25\",\n        \"assigned_to\": 2,\n        \"created_at\": \"2026-04-21T10:00:00.000000Z\",\n        \"updated_at\": \"2026-04-21T10:00:00.000000Z\"\n      }\n    ],\n    \"created_at\": \"2026-04-21T10:00:00.000000Z\",\n    \"updated_at\": \"2026-04-21T10:00:00.000000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Task",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Build API v2\",\n  \"deadline\": \"2026-05-01\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/tasks/{{task_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "tasks", "{{task_id}}"]
+            },
+            "description": "Updates task fields. All fields are optional. Requires project membership."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Task updated.\",\n  \"data\": {\n    \"id\": 1,\n    \"project_id\": 1,\n    \"title\": \"Build API v2\",\n    \"status\": \"pending\",\n    \"deadline\": \"2026-05-01\",\n    \"created_by\": 1,\n    \"assigned_to\": 2,\n    \"created_at\": \"2026-04-21T10:00:00.000000Z\",\n    \"updated_at\": \"2026-04-21T11:00:00.000000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Task",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/tasks/{{task_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "tasks", "{{task_id}}"]
+            },
+            "description": "Deletes a task and its subtasks. Requires project membership."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Task deleted.\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Task Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"working\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/tasks/{{task_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "tasks", "{{task_id}}", "status"]
+            },
+            "description": "Updates only the task status. Requires project membership."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Task status updated.\",\n  \"data\": {\n    \"id\": 1,\n    \"project_id\": 1,\n    \"title\": \"Build API\",\n    \"status\": \"working\",\n    \"deadline\": \"2026-04-30\",\n    \"created_by\": 1,\n    \"assigned_to\": 2,\n    \"created_at\": \"2026-04-21T10:00:00.000000Z\",\n    \"updated_at\": \"2026-04-21T11:30:00.000000Z\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Subtasks",
+      "item": [
+        {
+          "name": "List Subtasks for Task",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/tasks/{{task_id}}/subtasks",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "tasks", "{{task_id}}", "subtasks"]
+            },
+            "description": "Returns all subtasks for a task. Requires project membership."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Subtasks retrieved.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"task_id\": 1,\n      \"body\": \"Implement auth middleware\",\n      \"status\": \"pending\",\n      \"deadline\": \"2026-04-25\",\n      \"assigned_to\": 2,\n      \"assignee\": {\n        \"id\": 2,\n        \"name\": \"Team Member\",\n        \"email\": \"member@example.com\",\n        \"avatar\": null,\n        \"created_at\": \"2026-04-21T10:00:00.000000Z\"\n      },\n      \"created_at\": \"2026-04-21T10:00:00.000000Z\",\n      \"updated_at\": \"2026-04-21T10:00:00.000000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Subtask",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('subtask_id', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Implement auth middleware\",\n  \"status\": \"pending\",\n  \"deadline\": \"2026-04-25\",\n  \"assigned_to\": 2\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/tasks/{{task_id}}/subtasks",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "tasks", "{{task_id}}", "subtasks"]
+            },
+            "description": "Creates a new subtask under a task. Requires project membership. Auto-sets subtask_id env variable."
+          },
+          "response": [
+            {
+              "name": "201 — Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Subtask created successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"task_id\": 1,\n    \"body\": \"Implement auth middleware\",\n    \"status\": \"pending\",\n    \"deadline\": \"2026-04-25\",\n    \"assigned_to\": 2,\n    \"assignee\": {\n      \"id\": 2,\n      \"name\": \"Team Member\",\n      \"email\": \"member@example.com\",\n      \"avatar\": null,\n      \"created_at\": \"2026-04-21T10:00:00.000000Z\"\n    },\n    \"created_at\": \"2026-04-21T10:05:00.000000Z\",\n    \"updated_at\": \"2026-04-21T10:05:00.000000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Subtask",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Updated middleware logic\",\n  \"deadline\": \"2026-04-28\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/subtasks/{{subtask_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "subtasks", "{{subtask_id}}"]
+            },
+            "description": "Updates subtask fields. All fields optional. Requires project membership."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Subtask updated.\",\n  \"data\": {\n    \"id\": 1,\n    \"task_id\": 1,\n    \"body\": \"Updated middleware logic\",\n    \"status\": \"pending\",\n    \"deadline\": \"2026-04-28\",\n    \"assigned_to\": 2,\n    \"assignee\": {\n      \"id\": 2,\n      \"name\": \"Team Member\",\n      \"email\": \"member@example.com\",\n      \"avatar\": null,\n      \"created_at\": \"2026-04-21T10:00:00.000000Z\"\n    },\n    \"created_at\": \"2026-04-21T10:00:00.000000Z\",\n    \"updated_at\": \"2026-04-21T11:00:00.000000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Subtask",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/subtasks/{{subtask_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "subtasks", "{{subtask_id}}"]
+            },
+            "description": "Deletes a subtask. Requires project membership."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Subtask deleted.\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Subtask Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"done\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/subtasks/{{subtask_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "subtasks", "{{subtask_id}}", "status"]
+            },
+            "description": "Updates only the subtask status. Only the assignee or project creator can update."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Subtask status updated.\",\n  \"data\": {\n    \"id\": 1,\n    \"task_id\": 1,\n    \"body\": \"Implement auth middleware\",\n    \"status\": \"done\",\n    \"deadline\": \"2026-04-25\",\n    \"assigned_to\": 2,\n    \"assignee\": {\n      \"id\": 2,\n      \"name\": \"Team Member\",\n      \"email\": \"member@example.com\",\n      \"avatar\": null,\n      \"created_at\": \"2026-04-21T10:00:00.000000Z\"\n    },\n    \"created_at\": \"2026-04-21T10:00:00.000000Z\",\n    \"updated_at\": \"2026-04-21T12:00:00.000000Z\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "dashboard"]
+            },
+            "description": "Returns dashboard statistics: assigned tasks, subtasks, completed tasks, completion rate."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Dashboard data retrieved.\",\n  \"data\": {\n    \"assigned_tasks\": 8,\n    \"assigned_subtasks\": 12,\n    \"completed_tasks\": 4,\n    \"completion_rate\": 67.0\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Dashboard Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dashboard/analytics",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "dashboard", "analytics"]
+            },
+            "description": "Returns daily completion counts for the last 30 days (for charts)."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Analytics data retrieved.\",\n  \"data\": [\n    { \"date\": \"2026-04-19\", \"completed\": 3 },\n    { \"date\": \"2026-04-20\", \"completed\": 5 },\n    { \"date\": \"2026-04-21\", \"completed\": 2 }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/profile",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "profile"]
+            },
+            "description": "Returns the authenticated user's profile."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Profile retrieved.\",\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"Rayan\",\n    \"email\": \"rayan@example.com\",\n    \"avatar\": null,\n    \"created_at\": \"2026-04-21T10:00:00.000000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rayan Updated\",\n  \"email\": \"rayan.new@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/profile",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "profile"]
+            },
+            "description": "Updates the user's name and/or email."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Profile updated.\",\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"Rayan Updated\",\n    \"email\": \"rayan.new@example.com\",\n    \"avatar\": null,\n    \"created_at\": \"2026-04-21T10:00:00.000000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Upload Avatar",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "avatar",
+                  "type": "file",
+                  "src": "",
+                  "description": "Image file (JPEG, PNG, GIF, WEBP). Max 2 MB."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/profile/avatar",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "profile", "avatar"]
+            },
+            "description": "Uploads a new avatar image. Multipart form-data. Max 2048 KB."
+          },
+          "response": [
+            {
+              "name": "200 — OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Avatar uploaded successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"Rayan\",\n    \"email\": \"rayan@example.com\",\n    \"avatar\": \"http://localhost:8000/storage/avatars/abc123.jpg\",\n    \"created_at\": \"2026-04-21T10:00:00.000000Z\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
