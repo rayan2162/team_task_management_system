@@ -1,0 +1,1768 @@
+openapi: 3.1.0
+info:
+  title: TaskFlow — Team Task Management API
+  description: |
+    RESTful API for the TaskFlow team task management system.
+    Built with Laravel 12 and secured with Laravel Sanctum token authentication.
+
+    ## Authentication
+    All protected endpoints require a Bearer token obtained via `/api/v1/auth/login` or `/api/v1/auth/register`.
+    Include the token in the `Authorization` header:
+    ```
+    Authorization: Bearer <token>
+    ```
+
+    ## Response Format
+    All responses follow a standardised envelope:
+    ```json
+    {
+      "success": true,
+      "message": "Human-readable message",
+      "data": { ... }
+    }
+    ```
+    Error responses add an optional `errors` object:
+    ```json
+    {
+      "success": false,
+      "message": "Validation failed",
+      "errors": { "field": ["Error detail"] }
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: Rayan
+    url: https://github.com/rayan2162/team_task_management_system
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000/api
+    description: Local development
+
+tags:
+  - name: Health
+    description: Server health check
+  - name: Auth
+    description: Authentication (register, login, logout, current user)
+  - name: Projects
+    description: Project CRUD, join by code, archive
+  - name: Tasks
+    description: Task CRUD and status updates (scoped to projects)
+  - name: Subtasks
+    description: Subtask CRUD and status updates (scoped to tasks)
+  - name: Dashboard
+    description: Dashboard statistics and analytics
+  - name: Profile
+    description: User profile management and avatar upload
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum Token
+      description: Laravel Sanctum personal access token
+
+  schemas:
+    # ── Shared envelope ──────────────────────────────────────────────
+    SuccessResponse:
+      type: object
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          nullable: true
+
+    # ── Domain models ────────────────────────────────────────────────
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Rayan
+        email:
+          type: string
+          format: email
+          example: rayan@example.com
+        avatar:
+          type: string
+          nullable: true
+          example: http://localhost:8000/storage/avatars/abc123.jpg
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-04-21T10:00:00.000000Z"
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        code:
+          type: string
+          example: PRJX29K41
+        name:
+          type: string
+          example: Cashflow App (Issues)
+        status:
+          type: string
+          enum: [active, archived, done]
+          example: active
+        created_by:
+          type: integer
+          example: 1
+        creator:
+          $ref: "#/components/schemas/User"
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-04-21T10:00:00.000000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-04-21T10:00:00.000000Z"
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        project_id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: Build API
+        status:
+          type: string
+          enum: [pending, working, done]
+          example: pending
+        deadline:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-04-30"
+        created_by:
+          type: integer
+          nullable: true
+          example: 1
+        assigned_to:
+          type: integer
+          nullable: true
+          example: 2
+        creator:
+          $ref: "#/components/schemas/User"
+        assignee:
+          $ref: "#/components/schemas/User"
+        project:
+          $ref: "#/components/schemas/Project"
+        subtasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Subtask"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-04-21T10:00:00.000000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-04-21T10:00:00.000000Z"
+
+    Subtask:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        task_id:
+          type: integer
+          example: 1
+        body:
+          type: string
+          example: Implement auth middleware
+        status:
+          type: string
+          enum: [pending, working, done]
+          example: pending
+        deadline:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-04-25"
+        assigned_to:
+          type: integer
+          nullable: true
+          example: 2
+        assignee:
+          $ref: "#/components/schemas/User"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-04-21T10:00:00.000000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-04-21T10:00:00.000000Z"
+
+    DashboardStats:
+      type: object
+      properties:
+        assigned_tasks:
+          type: integer
+          example: 8
+        assigned_subtasks:
+          type: integer
+          example: 12
+        completed_tasks:
+          type: integer
+          example: 4
+        completion_rate:
+          type: number
+          format: float
+          example: 67.0
+
+    AnalyticsEntry:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2026-04-20"
+        completed:
+          type: integer
+          example: 5
+
+    # ── Request bodies ───────────────────────────────────────────────
+    RegisterRequest:
+      type: object
+      required: [name, email, password, password_confirmation]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          example: John Doe
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: john@email.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: secret123
+        password_confirmation:
+          type: string
+          format: password
+          example: secret123
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: rayan@example.com
+        password:
+          type: string
+          format: password
+          example: password
+
+    StoreProjectRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 150
+          example: Website Redesign
+
+    JoinProjectRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          example: PRJX29K41
+
+    StoreTaskRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          maxLength: 150
+          example: Build API
+        status:
+          type: string
+          enum: [pending, working, done]
+          example: pending
+        deadline:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-04-30"
+        assigned_to:
+          type: integer
+          nullable: true
+          example: 2
+
+    UpdateTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 150
+          example: Build API v2
+        status:
+          type: string
+          enum: [pending, working, done]
+          example: working
+        deadline:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-05-01"
+        assigned_to:
+          type: integer
+          nullable: true
+          example: 2
+
+    UpdateStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, working, done]
+          example: working
+
+    StoreSubtaskRequest:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+          example: Implement auth middleware
+        status:
+          type: string
+          enum: [pending, working, done]
+          example: pending
+        deadline:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-04-25"
+        assigned_to:
+          type: integer
+          nullable: true
+          example: 2
+
+    UpdateSubtaskRequest:
+      type: object
+      properties:
+        body:
+          type: string
+          example: Updated middleware logic
+        status:
+          type: string
+          enum: [pending, working, done]
+          example: working
+        deadline:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-04-28"
+        assigned_to:
+          type: integer
+          nullable: true
+          example: 3
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          example: Rayan Updated
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: rayan.new@example.com
+
+  responses:
+    Unauthenticated:
+      description: Missing or invalid Bearer token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            message: Unauthenticated.
+    Forbidden:
+      description: Authenticated but not authorised for this resource
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            message: This action is unauthorized.
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            message: Resource not found.
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            message: Validation failed.
+            errors:
+              email:
+                - The email field is required.
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            message: Server error.
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+paths:
+  # ── Health ─────────────────────────────────────────────────────────
+  /health:
+    get:
+      operationId: healthCheck
+      tags: [Health]
+      summary: Health check
+      description: Returns server status. No authentication required.
+      responses:
+        "200":
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+              example:
+                status: ok
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ── Auth ───────────────────────────────────────────────────────────
+  /v1/auth/register:
+    post:
+      operationId: register
+      tags: [Auth]
+      summary: Register a new user
+      description: Creates a new user account and returns the user object with a Sanctum bearer token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            example:
+              name: John Doe
+              email: john@email.com
+              password: secret123
+              password_confirmation: secret123
+      responses:
+        "201":
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: "#/components/schemas/User"
+                          token:
+                            type: string
+                            example: 1|abc123def456
+              example:
+                success: true
+                message: Registration successful.
+                data:
+                  user:
+                    id: 1
+                    name: John Doe
+                    email: john@email.com
+                    avatar: null
+                    created_at: "2026-04-21T10:00:00.000000Z"
+                  token: 1|abc123def456
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /v1/auth/login:
+    post:
+      operationId: login
+      tags: [Auth]
+      summary: Log in
+      description: Authenticates a user and returns a Sanctum bearer token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: rayan@example.com
+              password: password
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: "#/components/schemas/User"
+                          token:
+                            type: string
+                            example: 2|xyz789ghi012
+              example:
+                success: true
+                message: Login successful.
+                data:
+                  user:
+                    id: 1
+                    name: Rayan
+                    email: rayan@example.com
+                    avatar: null
+                    created_at: "2026-04-21T10:00:00.000000Z"
+                  token: 2|xyz789ghi012
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Invalid credentials.
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /v1/auth/logout:
+    post:
+      operationId: logout
+      tags: [Auth]
+      summary: Log out
+      description: Revokes the current Sanctum token.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Logged out successfully.
+                data: null
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /v1/auth/me:
+    get:
+      operationId: me
+      tags: [Auth]
+      summary: Get current user
+      description: Returns the currently authenticated user.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Current user retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/User"
+              example:
+                success: true
+                message: Current user retrieved.
+                data:
+                  id: 1
+                  name: Rayan
+                  email: rayan@example.com
+                  avatar: null
+                  created_at: "2026-04-21T10:00:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ── Projects ───────────────────────────────────────────────────────
+  /v1/projects:
+    get:
+      operationId: listProjects
+      tags: [Projects]
+      summary: List my projects
+      description: Returns all projects the authenticated user is a member of.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Projects retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Project"
+              example:
+                success: true
+                message: Projects retrieved.
+                data:
+                  - id: 1
+                    code: PRJX29K41
+                    name: Cashflow App (Issues)
+                    status: active
+                    created_by: 1
+                    creator:
+                      id: 1
+                      name: Rayan
+                      email: rayan@example.com
+                      avatar: null
+                      created_at: "2026-04-21T10:00:00.000000Z"
+                    created_at: "2026-04-21T10:00:00.000000Z"
+                    updated_at: "2026-04-21T10:00:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    post:
+      operationId: createProject
+      tags: [Projects]
+      summary: Create a project
+      description: |
+        Creates a new project. The backend auto-generates a unique project code
+        and adds the creator as the first member.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoreProjectRequest"
+            example:
+              name: Website Redesign
+      responses:
+        "201":
+          description: Project created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Project"
+              example:
+                success: true
+                message: Project created successfully.
+                data:
+                  id: 2
+                  code: PRJAB12CD
+                  name: Website Redesign
+                  status: active
+                  created_by: 1
+                  created_at: "2026-04-21T10:05:00.000000Z"
+                  updated_at: "2026-04-21T10:05:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /v1/projects/{projectId}:
+    get:
+      operationId: getProject
+      tags: [Projects]
+      summary: Get a single project
+      description: Returns project details with members, tasks, and subtasks. Requires project membership.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Project retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Project"
+              example:
+                success: true
+                message: Project retrieved.
+                data:
+                  id: 1
+                  code: PRJX29K41
+                  name: Cashflow App (Issues)
+                  status: active
+                  created_by: 1
+                  creator:
+                    id: 1
+                    name: Rayan
+                    email: rayan@example.com
+                    avatar: null
+                    created_at: "2026-04-21T10:00:00.000000Z"
+                  members:
+                    - id: 1
+                      name: Rayan
+                      email: rayan@example.com
+                      avatar: null
+                      created_at: "2026-04-21T10:00:00.000000Z"
+                  tasks:
+                    - id: 1
+                      project_id: 1
+                      title: Build API
+                      status: pending
+                      deadline: "2026-04-30"
+                      created_by: 1
+                      assigned_to: 1
+                      subtasks: []
+                      created_at: "2026-04-21T10:00:00.000000Z"
+                      updated_at: "2026-04-21T10:00:00.000000Z"
+                  created_at: "2026-04-21T10:00:00.000000Z"
+                  updated_at: "2026-04-21T10:00:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /v1/projects/join:
+    post:
+      operationId: joinProject
+      tags: [Projects]
+      summary: Join a project by code
+      description: Adds the authenticated user to a project using its unique code.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinProjectRequest"
+            example:
+              code: PRJX29K41
+      responses:
+        "200":
+          description: Joined project
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Project"
+              example:
+                success: true
+                message: Joined project successfully.
+                data:
+                  id: 1
+                  code: PRJX29K41
+                  name: Cashflow App (Issues)
+                  status: active
+                  created_by: 1
+                  created_at: "2026-04-21T10:00:00.000000Z"
+                  updated_at: "2026-04-21T10:00:00.000000Z"
+        "400":
+          description: Already a member or project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: You are already a member of this project.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /v1/projects/{projectId}/archive:
+    patch:
+      operationId: archiveProject
+      tags: [Projects]
+      summary: Archive a project
+      description: Sets the project status to "archived". Only the project creator can archive.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Project archived
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Project"
+              example:
+                success: true
+                message: Project archived.
+                data:
+                  id: 1
+                  code: PRJX29K41
+                  name: Cashflow App (Issues)
+                  status: archived
+                  created_by: 1
+                  created_at: "2026-04-21T10:00:00.000000Z"
+                  updated_at: "2026-04-21T12:00:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ── Tasks ──────────────────────────────────────────────────────────
+  /v1/projects/{projectId}/tasks:
+    get:
+      operationId: listTasks
+      tags: [Tasks]
+      summary: List tasks for a project
+      description: Returns all tasks belonging to a project. Supports optional filters.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, working, done]
+          description: Filter by task status
+        - name: assigned_to
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter by assignee user ID
+      responses:
+        "200":
+          description: Tasks retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Task"
+              example:
+                success: true
+                message: Tasks retrieved.
+                data:
+                  - id: 1
+                    project_id: 1
+                    title: Build API
+                    status: pending
+                    deadline: "2026-04-30"
+                    created_by: 1
+                    assigned_to: 2
+                    created_at: "2026-04-21T10:00:00.000000Z"
+                    updated_at: "2026-04-21T10:00:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    post:
+      operationId: createTask
+      tags: [Tasks]
+      summary: Create a task
+      description: Creates a new task in the given project. Requires project membership.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoreTaskRequest"
+            example:
+              title: Build API
+              status: pending
+              deadline: "2026-04-30"
+              assigned_to: 2
+      responses:
+        "201":
+          description: Task created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Task"
+              example:
+                success: true
+                message: Task created successfully.
+                data:
+                  id: 1
+                  project_id: 1
+                  title: Build API
+                  status: pending
+                  deadline: "2026-04-30"
+                  created_by: 1
+                  assigned_to: 2
+                  creator:
+                    id: 1
+                    name: Rayan
+                    email: rayan@example.com
+                    avatar: null
+                    created_at: "2026-04-21T10:00:00.000000Z"
+                  assignee:
+                    id: 2
+                    name: Team Member
+                    email: member@example.com
+                    avatar: null
+                    created_at: "2026-04-21T10:00:00.000000Z"
+                  created_at: "2026-04-21T10:05:00.000000Z"
+                  updated_at: "2026-04-21T10:05:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /v1/tasks/{taskId}:
+    get:
+      operationId: getTask
+      tags: [Tasks]
+      summary: Get a single task
+      description: Returns a task with its subtasks. Requires project membership.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Task retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Task"
+              example:
+                success: true
+                message: Task retrieved.
+                data:
+                  id: 1
+                  project_id: 1
+                  title: Build API
+                  status: pending
+                  deadline: "2026-04-30"
+                  created_by: 1
+                  assigned_to: 2
+                  subtasks:
+                    - id: 1
+                      task_id: 1
+                      body: Implement auth middleware
+                      status: pending
+                      deadline: "2026-04-25"
+                      assigned_to: 2
+                      created_at: "2026-04-21T10:00:00.000000Z"
+                      updated_at: "2026-04-21T10:00:00.000000Z"
+                  created_at: "2026-04-21T10:00:00.000000Z"
+                  updated_at: "2026-04-21T10:00:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    put:
+      operationId: updateTask
+      tags: [Tasks]
+      summary: Update a task
+      description: Updates task fields. All fields are optional. Requires project membership.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTaskRequest"
+            example:
+              title: Build API v2
+              deadline: "2026-05-01"
+      responses:
+        "200":
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Task"
+              example:
+                success: true
+                message: Task updated.
+                data:
+                  id: 1
+                  project_id: 1
+                  title: Build API v2
+                  status: pending
+                  deadline: "2026-05-01"
+                  created_by: 1
+                  assigned_to: 2
+                  created_at: "2026-04-21T10:00:00.000000Z"
+                  updated_at: "2026-04-21T11:00:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    delete:
+      operationId: deleteTask
+      tags: [Tasks]
+      summary: Delete a task
+      description: Deletes a task and its subtasks. Requires project membership.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Task deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Task deleted.
+                data: null
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /v1/tasks/{taskId}/status:
+    patch:
+      operationId: updateTaskStatus
+      tags: [Tasks]
+      summary: Update task status
+      description: Updates only the status field of a task. Requires project membership.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStatusRequest"
+            example:
+              status: working
+      responses:
+        "200":
+          description: Task status updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Task"
+              example:
+                success: true
+                message: Task status updated.
+                data:
+                  id: 1
+                  project_id: 1
+                  title: Build API
+                  status: working
+                  deadline: "2026-04-30"
+                  created_by: 1
+                  assigned_to: 2
+                  created_at: "2026-04-21T10:00:00.000000Z"
+                  updated_at: "2026-04-21T11:30:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ── Subtasks ───────────────────────────────────────────────────────
+  /v1/tasks/{taskId}/subtasks:
+    get:
+      operationId: listSubtasks
+      tags: [Subtasks]
+      summary: List subtasks for a task
+      description: Returns all subtasks belonging to a task. Requires project membership.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Subtasks retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Subtask"
+              example:
+                success: true
+                message: Subtasks retrieved.
+                data:
+                  - id: 1
+                    task_id: 1
+                    body: Implement auth middleware
+                    status: pending
+                    deadline: "2026-04-25"
+                    assigned_to: 2
+                    assignee:
+                      id: 2
+                      name: Team Member
+                      email: member@example.com
+                      avatar: null
+                      created_at: "2026-04-21T10:00:00.000000Z"
+                    created_at: "2026-04-21T10:00:00.000000Z"
+                    updated_at: "2026-04-21T10:00:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    post:
+      operationId: createSubtask
+      tags: [Subtasks]
+      summary: Create a subtask
+      description: Creates a new subtask under the given task. Requires project membership.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoreSubtaskRequest"
+            example:
+              body: Implement auth middleware
+              status: pending
+              deadline: "2026-04-25"
+              assigned_to: 2
+      responses:
+        "201":
+          description: Subtask created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Subtask"
+              example:
+                success: true
+                message: Subtask created successfully.
+                data:
+                  id: 1
+                  task_id: 1
+                  body: Implement auth middleware
+                  status: pending
+                  deadline: "2026-04-25"
+                  assigned_to: 2
+                  assignee:
+                    id: 2
+                    name: Team Member
+                    email: member@example.com
+                    avatar: null
+                    created_at: "2026-04-21T10:00:00.000000Z"
+                  created_at: "2026-04-21T10:05:00.000000Z"
+                  updated_at: "2026-04-21T10:05:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /v1/subtasks/{subtaskId}:
+    put:
+      operationId: updateSubtask
+      tags: [Subtasks]
+      summary: Update a subtask
+      description: Updates subtask fields. All fields are optional. Requires project membership.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: subtaskId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSubtaskRequest"
+            example:
+              body: Updated middleware logic
+              deadline: "2026-04-28"
+      responses:
+        "200":
+          description: Subtask updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Subtask"
+              example:
+                success: true
+                message: Subtask updated.
+                data:
+                  id: 1
+                  task_id: 1
+                  body: Updated middleware logic
+                  status: pending
+                  deadline: "2026-04-28"
+                  assigned_to: 2
+                  assignee:
+                    id: 2
+                    name: Team Member
+                    email: member@example.com
+                    avatar: null
+                    created_at: "2026-04-21T10:00:00.000000Z"
+                  created_at: "2026-04-21T10:00:00.000000Z"
+                  updated_at: "2026-04-21T11:00:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    delete:
+      operationId: deleteSubtask
+      tags: [Subtasks]
+      summary: Delete a subtask
+      description: Deletes a subtask. Requires project membership.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: subtaskId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Subtask deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Subtask deleted.
+                data: null
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /v1/subtasks/{subtaskId}/status:
+    patch:
+      operationId: updateSubtaskStatus
+      tags: [Subtasks]
+      summary: Update subtask status
+      description: |
+        Updates only the status field of a subtask.
+        Only the subtask assignee or the project creator can update the status.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: subtaskId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStatusRequest"
+            example:
+              status: done
+      responses:
+        "200":
+          description: Subtask status updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Subtask"
+              example:
+                success: true
+                message: Subtask status updated.
+                data:
+                  id: 1
+                  task_id: 1
+                  body: Implement auth middleware
+                  status: done
+                  deadline: "2026-04-25"
+                  assigned_to: 2
+                  assignee:
+                    id: 2
+                    name: Team Member
+                    email: member@example.com
+                    avatar: null
+                    created_at: "2026-04-21T10:00:00.000000Z"
+                  created_at: "2026-04-21T10:00:00.000000Z"
+                  updated_at: "2026-04-21T12:00:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ── Dashboard ──────────────────────────────────────────────────────
+  /v1/dashboard:
+    get:
+      operationId: getDashboard
+      tags: [Dashboard]
+      summary: Get dashboard statistics
+      description: |
+        Returns summary statistics for the authenticated user:
+        assigned tasks, assigned subtasks, completed tasks, and completion rate.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Dashboard data retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/DashboardStats"
+              example:
+                success: true
+                message: Dashboard data retrieved.
+                data:
+                  assigned_tasks: 8
+                  assigned_subtasks: 12
+                  completed_tasks: 4
+                  completion_rate: 67.0
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /v1/dashboard/analytics:
+    get:
+      operationId: getDashboardAnalytics
+      tags: [Dashboard]
+      summary: Get dashboard analytics
+      description: Returns daily task completion counts for the last 30 days (for charts).
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Analytics data retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/AnalyticsEntry"
+              example:
+                success: true
+                message: Analytics data retrieved.
+                data:
+                  - date: "2026-04-19"
+                    completed: 3
+                  - date: "2026-04-20"
+                    completed: 5
+                  - date: "2026-04-21"
+                    completed: 2
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ── Profile ────────────────────────────────────────────────────────
+  /v1/profile:
+    get:
+      operationId: getProfile
+      tags: [Profile]
+      summary: Get profile
+      description: Returns the authenticated user's profile.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Profile retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/User"
+              example:
+                success: true
+                message: Profile retrieved.
+                data:
+                  id: 1
+                  name: Rayan
+                  email: rayan@example.com
+                  avatar: null
+                  created_at: "2026-04-21T10:00:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    patch:
+      operationId: updateProfile
+      tags: [Profile]
+      summary: Update profile
+      description: Updates the authenticated user's name and/or email.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+            example:
+              name: Rayan Updated
+              email: rayan.new@example.com
+      responses:
+        "200":
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/User"
+              example:
+                success: true
+                message: Profile updated.
+                data:
+                  id: 1
+                  name: Rayan Updated
+                  email: rayan.new@example.com
+                  avatar: null
+                  created_at: "2026-04-21T10:00:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /v1/profile/avatar:
+    post:
+      operationId: uploadAvatar
+      tags: [Profile]
+      summary: Upload avatar
+      description: Uploads a new avatar image for the authenticated user. Max 2 MB. Accepts JPEG, PNG, GIF, WEBP.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [avatar]
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+                  description: Image file (max 2048 KB)
+      responses:
+        "200":
+          description: Avatar uploaded
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/User"
+              example:
+                success: true
+                message: Avatar uploaded successfully.
+                data:
+                  id: 1
+                  name: Rayan
+                  email: rayan@example.com
+                  avatar: http://localhost:8000/storage/avatars/abc123.jpg
+                  created_at: "2026-04-21T10:00:00.000000Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
