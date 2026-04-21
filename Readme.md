@@ -1,4 +1,4 @@
-# TaskFlow — Team Task Management System
+# Team Task Management System
 
 A production-quality, full-stack project management application designed for teams to create projects, organise tasks with nested subtasks, track progress with real-time dashboards, and collaborate through a project-code-based invite system.
 
@@ -78,7 +78,6 @@ The application follows a **DDD-lite** (Domain-Driven Design lite) architecture 
 | **Testing** | Pest (PHP) | 3.x |
 | **Containerisation** | Docker + Docker Compose | — |
 | **Web Server** | Nginx | Alpine |
-| **Cache** | Redis | 7 |
 
 ---
 
